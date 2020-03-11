@@ -5,6 +5,7 @@ import opc
 import time
 import datetime
 from influxdb import InfluxDBClient
+import mh_z19
 
 
 #################### SENSOR SETUP ######################
@@ -27,7 +28,7 @@ port = 8086
 user = "root"
 password = "root"
 dbname = "logger_db"
-session = "test1"
+session = "test2"
 now = datetime.datetime.now()
 run_num = now.strftime("%Y%m%d%H%M")
 
@@ -36,15 +37,20 @@ sampling_period = 4
 
 
 def get_data_points():
-	data = {}
-	data = alphasense.histogram()
+	opc_data = {}
+	opc_data = alphasense.histogram()
+	
+	mhz19_data = mh_z19.read_all()
 	
 	# Get the five measurement values from the OPC sensor.
-	pm1 = data['PM_A']
-	pm2_5 = data['PM_B']
-	pm10 = data['PM_C']
-	temperature = data['Temperature']
-	humidity = data['Relative humidity']
+	pm1 = opc_data['PM_A']
+	pm2_5 = opc_data['PM_B']
+	pm10 = opc_data['PM_C']
+	temperature = opc_data['Temperature']
+	humidity = opc_data['Relative humidity']
+	
+	# Get the CO2 measurement value from the MHZ19 sensor.
+	co2 = mhz19_data['co2']
 	
 	# Get a local timestamp
 	timestamp = datetime.datetime.utcnow().isoformat()
@@ -57,8 +63,8 @@ def get_data_points():
 	print "PM  1.0: {0}{1}g/m{2}".format(round(pm1,2), u'\u00B5'.encode('utf8'), u'\u00B3'.encode('utf8'))
 	print "PM  2.5: {0}{1}g/m{2}".format(round(pm2_5,2), u'\u00B5'.encode('utf8'), u'\u00B3'.encode('utf8'))
 	print "PM 10.0: {0}{1}g/m{2}".format(round(pm10,2), u'\u00B5'.encode('utf8'), u'\u00B3'.encode('utf8'))
+	print "C0{0}: {1}ppm".format(u"\u2082".encode('utf8'), co2)
 	print "****************************************"
-	print ""
 	
 	# Create InfluxDB datapoints
 	datapoints = [
@@ -73,7 +79,8 @@ def get_data_points():
 					"humidityvalue":humidity,
 					"pm1value":pm1,
 					"pm25value":pm2_5,
-					"pm10value":pm10
+					"pm10value":pm10,
+					"co2value":co2
 					}
 				}
 			]
@@ -102,7 +109,10 @@ while proceed == True:
 		# Write data points to InfluxDB
 		datapoints = get_data_points()
 		result = client.write_points(datapoints)
-		print "Write points {0} Result:{1}".format(datapoints, result)
+		if result:
+			print "Data sent successfully to InfluxDB!"
+		else:
+			print "ERROR: data not sent successfully to InfluxDB..."
 		
 		# Wait for next sample
 		time.sleep(sampling_period)
