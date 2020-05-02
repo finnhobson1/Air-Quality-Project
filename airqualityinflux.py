@@ -40,7 +40,7 @@ def get_data_points():
 	opc_data = {}
 	opc_data = alphasense.histogram()
 	
-	mhz19_data = mh_z19.read_all()
+	mhz19_data = mh_z19.read()
 	
 	# Get the five measurement values from the OPC sensor.
 	pm1 = opc_data['PM_A']
@@ -50,7 +50,11 @@ def get_data_points():
 	humidity = opc_data['Relative humidity']
 	
 	# Get the CO2 measurement value from the MHZ19 sensor.
-	co2 = mhz19_data['co2']
+	try:
+		co2 = mhz19_data['co2']
+	except:
+		co2 = None
+		print "ERROR: CO2 value could not be read"	
 	
 	# Get a local timestamp
 	timestamp = datetime.datetime.utcnow().isoformat()
