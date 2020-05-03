@@ -28,8 +28,10 @@ Suggested Correction Algorithm:
 from ADCPi import ADCPi
 
 
-adc1 = ADCPi(0x68, 0x69, 16)
-adc2 = ADCPi(0x6A, 0x6B, 16)
+# Setup ADCs for gas sensors
+adc1 = ADCPi(0x68, 0x69, 16) 	# Channels: SO2 (1-2), NO2 (3-4), NO2+O3 (5-6), 
+adc2 = ADCPi(0x6A, 0x6B, 16)	# Channels: CO (1-2) , NO (3-4)
+
 
 so2_w_raw = adc1.read_voltage(1) * 1000
 so2_a_raw = adc1.read_voltage(2) * 1000
@@ -55,16 +57,16 @@ ox_w_zero = 220
 ox_a_zero = 215
 ox_convert = 0.334
 
-co_w_raw = adc1.read_voltage(7) * 1000
-co_a_raw = adc1.read_voltage(8) * 1000
+co_w_raw = adc1.read_voltage(1) * 1000
+co_a_raw = adc1.read_voltage(2) * 1000
 co_w_offset = 360
 co_a_offset = 344
 co_w_zero = 362
 co_a_zero = 335
 co_convert = 0.444
 
-no_w_raw = adc2.read_voltage(1) * 1000
-no_a_raw = adc2.read_voltage(2) * 1000
+no_w_raw = adc2.read_voltage(3) * 1000
+no_a_raw = adc2.read_voltage(4) * 1000
 no_w_offset = 291
 no_a_offset = 248
 no_w_zero = 344
