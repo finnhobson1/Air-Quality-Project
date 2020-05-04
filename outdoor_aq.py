@@ -12,6 +12,7 @@ import datetime
 import csv
 import logging
 import json
+import Adafruit_DHT
 from ADCPi import ADCPi
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
 
@@ -31,6 +32,10 @@ opcn3 = opc.OPCN3(spi)
 adc1 = ADCPi(0x68, 0x69, 16) 	# Channels: SO2 (1-2), NO2 (3-4), NO2+O3 (5-6), 
 adc2 = ADCPi(0x6A, 0x6B, 16)	# Channels: CO (1-2) , NO (3-4)
 
+# Setup DHT22 temp/humidity sensor
+dht22 = Adafruit_DHT.DHT22
+dht_pin = 4
+
 
 ################## GLOBAL VARIABLES ####################
 
@@ -38,7 +43,7 @@ adc2 = ADCPi(0x6A, 0x6B, 16)	# Channels: CO (1-2) , NO (3-4)
 node_id = 1
 
 # Sampling period
-sampling_period = 3.4 	# 5s total (loop takes approx. 1.6s) 
+sampling_period = 3.0 # 5-10s total, AWS connection time uncertain
 
 # AWS IoT variables
 endpoint = "a33igdsnv7g3xz-ats.iot.eu-west-2.amazonaws.com"
@@ -65,13 +70,12 @@ def get_data():
 		print "Timestamp: ", timestamp  
 		print ""
 		
-		temp = 0
-		#csv_row['temperature'] = 'N/A'
-		humidity = 0
-		#csv_row['humidity'] = 'N/A'
+		humidity, temp = Adafruit_DHT.read_retry(dht22, dht_pin)
+		csv_row['temperature'] = round(temp,2)
+		csv_row['humidity'] = round(humidity,2)
 		
-		print "Temperature: {0}{1}C".format("?", u'\u00b0'.encode('utf8'))
-		print "Humidity: {0}%".format("?")
+		print "Temperature: {0}{1}C".format(round(temp,1), u'\u00b0'.encode('utf8'))
+		print "Humidity: {0}%".format(round(humidity,1))
 		print ""
 		
 		so2_w_raw = adc1.read_voltage(1) * 1000.0
