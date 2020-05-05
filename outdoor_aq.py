@@ -1,6 +1,7 @@
 """
 This script regularly takes air quality measurements from the Alphasense OPC-N3
-and 5 different Alphasense electrochemical B4 gas sensors. 
+and 5 different Alphasense electrochemical B4 gas sensors. The data is stored 
+locally in a CSV file and published to AWS IoT via MQTT.
 """
 
 ####################### IMPORTS ########################
@@ -14,7 +15,7 @@ import logging
 import json
 import Adafruit_DHT
 from ADCPi import ADCPi
-from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
+from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 
 
 ##################### SENSOR SETUP #####################
@@ -43,7 +44,7 @@ dht_pin = 4
 node_id = 1
 
 # Sampling period
-sampling_period = 3.0 # 5-10s total, AWS connection time uncertain
+sampling_period = 2.5 # 5-10s total, AWS connection time uncertain
 
 # AWS IoT variables
 endpoint = "a33igdsnv7g3xz-ats.iot.eu-west-2.amazonaws.com"
@@ -51,7 +52,6 @@ port = 8883
 root_CA_path = "/home/pi/outdoor-node/certs/AmazonRootCA1.pem"
 cert_path = "/home/pi/outdoor-node/certs/600feb81cb-certificate.pem.crt"
 priv_key_path = "/home/pi/outdoor-node/certs/600feb81cb-private.pem.key"
-thing_name = "RPi-AQ-Node1"
 client_id = "RPi-AQ-Node1"
 
 
@@ -65,9 +65,11 @@ def get_data():
 		
 		timestamp = datetime.datetime.utcnow().isoformat()
 		csv_row['timestamp'] = timestamp
+		csv_row['node_id'] = node_id
 		
 		print "****************************************"
 		print "Timestamp: ", timestamp  
+		print "Node ID: ", node_id
 		print ""
 		
 		humidity, temp = Adafruit_DHT.read_retry(dht22, dht_pin)
@@ -115,7 +117,7 @@ def get_data():
 		pm_data = opcn3.histogram()
 		pm2_5 = pm_data['PM_B']
 		pm10 = pm_data['PM_C']
-		csv_row['pm2.5'] = round(pm2_5,3)
+		csv_row['pm2_5'] = round(pm2_5,3)
 		csv_row['pm10'] = round(pm10,3)
 
 		
@@ -128,44 +130,11 @@ def get_data():
 		writer.writerow(csv_row)
 		
 		# Create message payload
-		payload = {"state":{"reported":csv_row}}
+		payload = json.dumps(csv_row)
 
-		# Update shadow
-		deviceShadowHandler.shadowUpdate(json.dumps(payload), shadow_callback_update, 5)
-		
-		
-# Function called when a shadow is updated
-def shadow_callback_update(payload, response_status, token):
-
-    # Display status and data from update request
-    if response_status == "timeout":
-        print "Update request " + token + " time out!"
-
-    if response_status == "accepted":
-        payloadDict = json.loads(payload)
-        print "~~~~~~~~~~~~~~~~~~~~~~~" 
-        print "Update request with token: " + token + " accepted!" 
-        print "~~~~~~~~~~~~~~~~~~~~~~~\n\n"
-
-    if response_status == "rejected":
-        print "Update request " + token + " rejected!"
-
-
-# Function called when a shadow is deleted
-def shadow_callback_delete(payload, response_status, token):
-
-     # Display status and data from delete request
-    if response_status == "timeout":
-        print "Delete request " + token + " time out!"
-
-    if response_status == "accepted":
-        print "~~~~~~~~~~~~~~~~~~~~~~~"
-        print "Delete request with token: " + token + " accepted!"
-        print "~~~~~~~~~~~~~~~~~~~~~~~\n\n"
-
-    if response_status == "rejected":
-        print "Delete request " + token + " rejected!"
-
+		# Publish message
+		myMQTTClient.publish("measurements/" + client_id, payload, 0)
+	
 
 # Configure logging
 # AWSIoTMQTTShadowClient writes data to the log
@@ -200,30 +169,24 @@ print ""
 # Create local output CSV file
 now = datetime.datetime.now().strftime("%d%m%Y-%H%M")
 f = open("/home/pi/outdoor-node/data/node" + str(node_id) + "_" + now + ".csv", 'w+')
-fnames = ['timestamp', 'temperature', 'humidity', 'pm2.5', 'pm10', 'so2_we', 'so2_ae', 'no2_we', 'no2_ae', 'ox_we', 'ox_ae', 'co_we', 'co_ae', 'no_we', 'no_ae']
+fnames = ['timestamp', 'node_id', 'temperature', 'humidity', 'pm2_5', 'pm10', 'so2_we', 'so2_ae', 'no2_we', 'no2_ae', 'ox_we', 'ox_ae', 'co_we', 'co_ae', 'no_we', 'no_ae']
 writer = csv.DictWriter(f, fieldnames=fnames)  
 writer.writeheader()
 f.close()
 
-# Init AWSIoTMQTTShadowClient
-myAWSIoTMQTTShadowClient = None
-myAWSIoTMQTTShadowClient = AWSIoTMQTTShadowClient(client_id)
-myAWSIoTMQTTShadowClient.configureEndpoint(endpoint, port)
-myAWSIoTMQTTShadowClient.configureCredentials(root_CA_path, priv_key_path, cert_path)
+# Init AWSIoTMQTTClient
+myMQTTClient = AWSIoTMQTTClient(client_id)
+myMQTTClient.configureEndpoint(endpoint, port)
+myMQTTClient.configureCredentials(root_CA_path, priv_key_path, cert_path)
 
-# AWSIoTMQTTShadowClient connection configuration
-myAWSIoTMQTTShadowClient.configureAutoReconnectBackoffTime(1, 32, 20)
-myAWSIoTMQTTShadowClient.configureConnectDisconnectTimeout(10) # 10 sec
-myAWSIoTMQTTShadowClient.configureMQTTOperationTimeout(5) # 5 sec
+# AWSIoTMQTTClient connection configuration
+myMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
+myMQTTClient.configureConnectDisconnectTimeout(10) # 10 sec
+myMQTTClient.configureMQTTOperationTimeout(5) # 5 sec
 
 # Connect to AWS IoT
-myAWSIoTMQTTShadowClient.connect()
+myMQTTClient.connect()
 
-# Create a device shadow handler, use this to update and delete shadow document
-deviceShadowHandler = myAWSIoTMQTTShadowClient.createShadowHandlerWithName(thing_name, True)
-
-# Delete current shadow JSON doc
-deviceShadowHandler.shadowDelete(shadow_callback_delete, 5)
 
 # Loop for taking measurements from sensors, stop with CTRL+C
 proceed = True
