@@ -1,0 +1,21 @@
+#!/bin/bash
+
+sudo apt-get update -y
+sudo apt-get upgrade -y
+sudo apt-get install python-pip -y
+sudo python -m pip install --upgrade pip setuptools wheel
+
+sudo python2.7 -m pip install git+https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
+sudo pip install smbus2
+
+sudo pip install Adafruit_DHT
+
+sudo pip install AWSIoTPythonSDK
+
+sudo cp air-quality-node.service /lib/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable air-quality-node.service
+
+sudo mkdir -p /home/pi/outdoor-node
+sudo mkdir -p /home/pi/outdoor-node/certs
+sudo mkdir -p /home/pi/outdoor-node/data

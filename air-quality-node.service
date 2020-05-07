@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 User=pi
-ExecStartPre=/bin/sh -c 'while ! curl -sf http://localhost:8086/ping; do sleep 1; done'
+#ExecStartPre=/bin/sh -c 'while ! curl -sf http://localhost:8086/ping; do sleep 1; done'
 ExecStart=/usr/bin/python2.7 /home/pi/Air-Quality-Project/outdoor_aq.py
 ExecStop=/usr/bin/python2.7 /home/pi/Air-Quality-Project/stop_sensor.py
 

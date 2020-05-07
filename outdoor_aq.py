@@ -41,7 +41,7 @@ dht_pin = 4
 ################## GLOBAL VARIABLES ####################
 
 # Node information
-node_id = 1
+node_id = 2
 
 # Sampling period
 sampling_period = 2.5 # 5-10s total, AWS connection time uncertain
@@ -50,9 +50,9 @@ sampling_period = 2.5 # 5-10s total, AWS connection time uncertain
 endpoint = "a33igdsnv7g3xz-ats.iot.eu-west-2.amazonaws.com"
 port = 8883
 root_CA_path = "/home/pi/outdoor-node/certs/AmazonRootCA1.pem"
-cert_path = "/home/pi/outdoor-node/certs/600feb81cb-certificate.pem.crt"
-priv_key_path = "/home/pi/outdoor-node/certs/600feb81cb-private.pem.key"
-client_id = "RPi-AQ-Node1"
+cert_path = "/home/pi/outdoor-node/certs/21d8ee9c57-certificate.pem.crt"
+priv_key_path = "/home/pi/outdoor-node/certs/21d8ee9c57-private.pem.key"
+client_id = "RPi-AQ-Node2"
 
 
 ##################### FUNCTIONS ########################
@@ -73,8 +73,8 @@ def get_data():
 		print ""
 		
 		humidity, temp = Adafruit_DHT.read_retry(dht22, dht_pin)
-		csv_row['temperature'] = round(temp,2)
-		csv_row['humidity'] = round(humidity,2)
+		csv_row['temperature'] = round(float(temp),2)
+		csv_row['humidity'] = round(float(humidity),2)
 		
 		print "Temperature: {0}{1}C".format(round(temp,1), u'\u00b0'.encode('utf8'))
 		print "Humidity: {0}%".format(round(humidity,1))
