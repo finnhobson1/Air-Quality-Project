@@ -15,6 +15,7 @@ import logging
 import json
 import Adafruit_DHT
 from ADCPi import ADCPi
+from gpiozero import LED
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 
 
@@ -37,22 +38,25 @@ adc2 = ADCPi(0x6A, 0x6B, 16)	# Channels: CO (1-2) , NO (3-4)
 dht22 = Adafruit_DHT.DHT22
 dht_pin = 4
 
+# Setup LED
+led = LED(17)
+
 
 ################## GLOBAL VARIABLES ####################
 
 # Node information
-node_id = 2
+node_id = 1
 
 # Sampling period
-sampling_period = 2.5 # 5-10s total, AWS connection time uncertain
+sampling_period = 2.0 # 5-10s total, AWS connection time uncertain
 
 # AWS IoT variables
 endpoint = "a33igdsnv7g3xz-ats.iot.eu-west-2.amazonaws.com"
 port = 8883
 root_CA_path = "/home/pi/outdoor-node/certs/AmazonRootCA1.pem"
-cert_path = "/home/pi/outdoor-node/certs/21d8ee9c57-certificate.pem.crt"
-priv_key_path = "/home/pi/outdoor-node/certs/21d8ee9c57-private.pem.key"
-client_id = "RPi-AQ-Node2"
+cert_path = "/home/pi/outdoor-node/certs/600feb81cb-certificate.pem.crt"
+priv_key_path = "/home/pi/outdoor-node/certs/600feb81cb-private.pem.key"
+client_id = "RPi-AQ-Node" + str(node_id)
 
 
 ##################### FUNCTIONS ########################
@@ -65,11 +69,11 @@ def get_data():
 		
 		timestamp = datetime.datetime.utcnow().isoformat()
 		csv_row['timestamp'] = timestamp
-		csv_row['node_id'] = node_id
+		csv_row['node_id'] = client_id
 		
 		print "****************************************"
 		print "Timestamp: ", timestamp  
-		print "Node ID: ", node_id
+		print "Node ID: ", client_id
 		print ""
 		
 		humidity, temp = Adafruit_DHT.read_retry(dht22, dht_pin)
@@ -120,18 +124,21 @@ def get_data():
 		csv_row['pm2_5'] = round(pm2_5,3)
 		csv_row['pm10'] = round(pm10,3)
 
-		
 		print "PM  2.5: {0}{1}g/m{2}".format(round(pm2_5,2), u'\u00B5'.encode('utf8'), u'\u00B3'.encode('utf8'))
 		print "PM 10.0: {0}{1}g/m{2}".format(round(pm10,2), u'\u00B5'.encode('utf8'), u'\u00B3'.encode('utf8'))
 		print "****************************************"
 		print ""
+		
+		# Flash LED while sending data
+		led.on()
+		time.sleep(0.1)
 		
 		# Write row to local CSV file
 		writer.writerow(csv_row)
 		
 		# Create message payload
 		payload = json.dumps(csv_row)
-
+		
 		# Publish message
 		myMQTTClient.publish("measurements/" + client_id, payload, 0)
 	
@@ -155,12 +162,12 @@ print "***STARTING SENSORS***"
 
 # Turn on OPC sensor
 opcn3.on()
+led.on()
 time.sleep(10)
 
 # Read and discard the first histogram as per Alphasense guidance
 data = {}
 data = opcn3.histogram()
-time.sleep(sampling_period)
 
 print ""
 print "***SENSORS STARTED, PRESS CTRL+C TO STOP***"
@@ -187,6 +194,10 @@ myMQTTClient.configureMQTTOperationTimeout(5) # 5 sec
 # Connect to AWS IoT
 myMQTTClient.connect()
 
+# Let sensors stabilise for 10 minutes as per Alphasense guidance
+print ""
+print "Waiting for sensors to stabilise..."
+time.sleep(60)
 
 # Loop for taking measurements from sensors, stop with CTRL+C
 proceed = True
@@ -195,9 +206,11 @@ while proceed == True:
 		# Take measurements from sensors
 		datapoints = get_data()
 		
+		led.off()
+		
 		# Wait for next sample
 		time.sleep(sampling_period)
-		
+
 	except KeyboardInterrupt:
 		proceed = False
 		print ""
