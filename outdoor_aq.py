@@ -99,8 +99,8 @@ def get_data():
 		csv_row['ox_we'] = round(ox_w_raw,3)
 		csv_row['ox_ae'] = round(ox_a_raw,3)
 
-		co_w_raw = adc1.read_voltage(1) * 1000.0
-		co_a_raw = adc1.read_voltage(2) * 1000.0
+		co_w_raw = adc2.read_voltage(1) * 1000.0
+		co_a_raw = adc2.read_voltage(2) * 1000.0
 		csv_row['co_we'] = round(co_w_raw,3)
 		csv_row['co_ae'] = round(co_a_raw,3)
 
@@ -169,10 +169,6 @@ time.sleep(10)
 data = {}
 data = opcn3.histogram()
 
-print ""
-print "***SENSORS STARTED, PRESS CTRL+C TO STOP***"
-print "" 
-
 # Create local output CSV file
 now = datetime.datetime.now().strftime("%d%m%Y-%H%M")
 f = open("/home/pi/outdoor-node/data/node" + str(node_id) + "_" + now + ".csv", 'w+')
@@ -197,7 +193,11 @@ myMQTTClient.connect()
 # Let sensors stabilise for 10 minutes as per Alphasense guidance
 print ""
 print "Waiting for sensors to stabilise..."
-time.sleep(60)
+time.sleep(600)
+
+print ""
+print "***SENSORS STARTED, PRESS CTRL+C TO STOP***"
+print "" 
 
 # Loop for taking measurements from sensors, stop with CTRL+C
 proceed = True
