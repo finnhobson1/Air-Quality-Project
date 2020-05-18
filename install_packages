@@ -8,6 +8,9 @@ sudo python -m pip install --upgrade pip setuptools wheel
 sudo python2.7 -m pip install git+https://github.com/abelectronicsuk/ABElectronics_Python_Libraries.git
 sudo pip install smbus2
 
+sudo pip install py-opc
+sudo pip install git+https://github.com/doceme/py-spidev.git
+
 sudo pip install Adafruit_DHT
 
 sudo pip install AWSIoTPythonSDK

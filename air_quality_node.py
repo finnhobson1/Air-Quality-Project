@@ -63,10 +63,12 @@ client_id = "RPi-AQ-Node" + str(node_id)
 
 def get_data():
 	
+	# Open CSV file
 	with open("/home/pi/outdoor-node/data/node" + str(node_id) + "_" + now + ".csv", 'a') as f:
 		writer = csv.DictWriter(f, fieldnames=fnames)  
 		csv_row = {}
 		
+		# Take measurement from each sensor
 		timestamp = datetime.datetime.utcnow().isoformat()
 		csv_row['timestamp'] = timestamp
 		csv_row['node_id'] = client_id
@@ -139,12 +141,11 @@ def get_data():
 		# Create message payload
 		payload = json.dumps(csv_row)
 		
-		# Publish message
+		# Publish message to AWS IoT
 		myMQTTClient.publish("measurements/" + client_id, payload, 0)
 	
 
 # Configure logging
-# AWSIoTMQTTShadowClient writes data to the log
 def configureLogging():
 
     logger = logging.getLogger("AWSIoTPythonSDK.core")
@@ -206,6 +207,7 @@ while proceed == True:
 		# Take measurements from sensors
 		datapoints = get_data()
 		
+		# Flash LED each time data is sent
 		led.off()
 		
 		# Wait for next sample
